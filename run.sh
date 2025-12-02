@@ -7,15 +7,16 @@ cd "$(dirname "$(realpath "$0")")"
 verbose=false
 function build {
     if $verbose; then
-        cargo build -r --bin "$1"
+        cargo build -r --bin "$1" "${cargo_args[@]}"
     else
-        cargo build -r --bin "$1" >/dev/null 2>&1
+        cargo build -r --bin "$1" "${cargo_args[@]}" >/dev/null 2>&1
     fi
 }
 
 run_test=false
 desired_days=()
 desired_parts=()
+cargo_args=()
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	day*)
@@ -41,8 +42,7 @@ while [[ $# -gt 0 ]]; do
         verbose=true
         ;;
     *)
-        echo "Unknown argument: $1" >&2
-        exit 1
+        cargo_args+=("$1")
         ;;
 	esac
 	shift
@@ -67,7 +67,7 @@ while read -r dir; do
 		cmd=("$bin" "${args[@]}")
 		if [ -f "$src" ]; then
             if $run_test; then
-                cargo test --bin "$day-$part"
+                cargo test --bin "$day-$part" "${cargo_args[@]}"
             else
 			    build "$day-$part"
             fi
