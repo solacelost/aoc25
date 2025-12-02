@@ -10,13 +10,13 @@ struct Opt {
 }
 
 fn solve(lines: Vec<String>) -> usize {
-    let mut dial = 50;
+    let mut dial: isize = 50;
     let mut ret = 0;
     for line in lines.iter() {
         let direction = line.chars().nth(0).unwrap();
-        let mut num = line[1..line.len()].parse::<usize>().unwrap();
+        let mut num = line[1..line.len()].parse::<isize>().unwrap();
         if direction == 'L' {
-            num = 100 - (num % 100);
+            num = -num;
         }
         dial = (dial + num) % 100;
         if dial == 0 {
