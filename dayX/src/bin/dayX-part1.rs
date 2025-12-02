@@ -27,7 +27,7 @@ fn main() -> io::Result<()> {
         .unwrap();
 
     let reader = BufReader::new(opt.input);
-    let lines: Vec<String> = reader.lines().flatten().collect();
+    let lines: Vec<String> = reader.lines().flatten().filter(|s| !s.is_empty()).collect();
     println!("{}", solve(lines));
     Ok(())
 }

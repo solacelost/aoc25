@@ -1,6 +1,5 @@
 use clap::Parser;
 use clio::Input;
-use rayon::prelude::*;
 use std::io::{self, BufReader, prelude::*};
 
 #[derive(Parser)]
@@ -8,26 +7,31 @@ struct Opt {
     /// Input file, use '-' for stdin
     #[clap(value_parser, default_value = "-")]
     input: Input,
-
-    /// the number of CPU cores to use (all if unspecified)
-    #[clap(short, long, default_value_t = num_cpus::get())]
-    threads: usize,
 }
 
 fn solve(lines: Vec<String>) -> usize {
-    lines.len()
+    let mut dial = 50;
+    let mut ret = 0;
+    for line in lines.iter() {
+        let direction = line.chars().nth(0).unwrap();
+        let mut num = line[1..line.len()].parse::<usize>().unwrap();
+        if direction == 'L' {
+            num = 100 - (num % 100);
+        }
+        dial = (dial + num) % 100;
+        if dial == 0 {
+            ret += 1;
+        }
+    }
+
+    ret
 }
 
 fn main() -> io::Result<()> {
     let opt = Opt::parse();
 
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(opt.threads)
-        .build_global()
-        .unwrap();
-
     let reader = BufReader::new(opt.input);
-    let lines: Vec<String> = reader.lines().flatten().collect();
+    let lines: Vec<String> = reader.lines().flatten().filter(|s| !s.is_empty()).collect();
     println!("{}", solve(lines));
     Ok(())
 }
@@ -43,18 +47,9 @@ mod tests {
     #[test]
     fn given() {
         let example = [
-            "467..114..",
-            "...*......",
-            "..35..633.",
-            "......#...",
-            "617*......",
-            ".....+.58.",
-            "..592.....",
-            "......755.",
-            "...$.*....",
-            ".664.598..",
+            "L68", "L30", "R48", "L5", "R60", "L55", "L1", "L99", "R14", "L82",
         ];
         println!("{}", example.join("\n"));
-        assert_eq!(solve(convert_example(&example)), 10);
+        assert_eq!(solve(convert_example(&example)), 3);
     }
 }
