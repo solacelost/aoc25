@@ -1,0 +1,24 @@
+[workspace]
+members = [
+    "day01",
+    "day01",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["James Harmison <jharmison@gmail.com>"]
+
+[workspace.dependencies]
+clap = { version = "4", features = ["derive"] }
+clio = { version = "0.3", features = ["clap-parse"] }
+phf = { version = "0.13", features = ["macros"] }
+itertools = { version = "0.14" }
+derivative = "2"
+regex = "1"
+rayon = "1"
+num_cpus = "1"
+strum = "0.27"
+strum_macros = "0.27"
+moka = { version = "0.12", features = ["sync"] }
