@@ -34,11 +34,11 @@ impl Bank {
         if next_highest.1 == 0 {
             let second_highest = self._highest(None, highest.1 - 1);
             let pair = second_highest.1 * 10 + highest.1;
-            eprintln!("Found (second candidate) highest pair: {}", pair);
+            //eprintln!("Found (second candidate) highest pair: {}", pair);
             return pair;
         }
         let pair = highest.1 * 10 + next_highest.1;
-        eprintln!("Found highest pair: {}", pair);
+        //eprintln!("Found highest pair: {}", pair);
         pair
     }
     fn _highest(&self, other: Option<usize>, max_digit: usize) -> (usize, usize) {
