@@ -1,6 +1,5 @@
 use clap::Parser;
 use clio::Input;
-use rayon::prelude::*;
 use std::io::{self, BufReader, prelude::*};
 
 #[derive(Parser)]
@@ -8,10 +7,6 @@ struct Opt {
     /// Input file, use '-' for stdin
     #[clap(value_parser, default_value = "-")]
     input: Input,
-
-    /// the number of CPU cores to use (all if unspecified)
-    #[clap(short, long, default_value_t = num_cpus::get())]
-    threads: usize,
 }
 
 fn is_in(id: usize, range: &(usize, usize)) -> bool {
@@ -105,16 +100,11 @@ fn solve(lines: Vec<String>) -> usize {
     //    eprintln!("{}-{}{}", range.0, range.1, warn);
     //}
     //eprintln!("Final: {:?}", fresh);
-    fresh.par_iter().map(|(l, r)| (*l..=*r).count()).sum()
+    fresh.iter().map(|(l, r)| (*l..=*r).count()).sum()
 }
 
 fn main() -> io::Result<()> {
     let opt = Opt::parse();
-
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(opt.threads)
-        .build_global()
-        .unwrap();
 
     let reader = BufReader::new(opt.input);
     let lines: Vec<String> = reader.lines().flatten().collect();

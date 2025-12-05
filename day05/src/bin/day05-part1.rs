@@ -1,6 +1,5 @@
 use clap::Parser;
 use clio::Input;
-use rayon::prelude::*;
 use std::io::{self, BufReader, prelude::*};
 
 #[derive(Parser)]
@@ -8,10 +7,6 @@ struct Opt {
     /// Input file, use '-' for stdin
     #[clap(value_parser, default_value = "-")]
     input: Input,
-
-    /// the number of CPU cores to use (all if unspecified)
-    #[clap(short, long, default_value_t = num_cpus::get())]
-    threads: usize,
 }
 
 fn is_fresh(id: usize, fresh: &Vec<(usize, usize)>) -> bool {
@@ -43,7 +38,7 @@ fn solve(lines: Vec<String>) -> usize {
         }
     }
 
-    ids.par_iter()
+    ids.iter()
         .map(|id| is_fresh(*id, &fresh))
         .filter(|is_fresh| *is_fresh)
         .count()
@@ -51,11 +46,6 @@ fn solve(lines: Vec<String>) -> usize {
 
 fn main() -> io::Result<()> {
     let opt = Opt::parse();
-
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(opt.threads)
-        .build_global()
-        .unwrap();
 
     let reader = BufReader::new(opt.input);
     let lines: Vec<String> = reader.lines().flatten().collect();
