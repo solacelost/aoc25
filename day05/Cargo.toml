@@ -1,0 +1,17 @@
+[package]
+name = "day05"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+clap = { workspace = true }
+clio = { workspace = true }
+rayon = { workspace = true }
+num_cpus = { workspace = true }
+
+[[bin]]
+name = "day05-part1"
+
+[[bin]]
+name = "day05-part2"
