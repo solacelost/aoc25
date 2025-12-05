@@ -23,7 +23,7 @@ fn valid_id(id: &usize) -> bool {
         let limit = len / slice_len + 1;
         for j in 2..limit {
             if string_id == slice.repeat(j) {
-                eprintln!("Found invalid id: {}", id);
+                //eprintln!("Found invalid id: {}", id);
                 return false;
             }
         }
