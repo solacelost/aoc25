@@ -1,0 +1,15 @@
+[package]
+name = "day06"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+clap = { workspace = true }
+clio = { workspace = true }
+
+[[bin]]
+name = "day06-part1"
+
+[[bin]]
+name = "day06-part2"
