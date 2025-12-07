@@ -6,7 +6,7 @@ from pathlib import Path
 Point = namedtuple("Point", ["x", "y"])
 
 with open(Path(__file__).parent.joinpath("input")) as f:
-    data = [line.strip() for line in f.readlines()]
+    data: list[str] = [line.strip() for line in f.readlines()]
 
 
 def process(beam: Point) -> int:
@@ -27,7 +27,7 @@ def process(beam: Point) -> int:
     return result
 
 
-cache = dict()
+cache: dict[Point, int] = dict()
 start = Point(data[0].find("S"), 1)
 result = process(start)
 print(result)
