@@ -25,13 +25,11 @@ impl Paper {
         let checks: [isize; 3] = [-1, 0, 1];
         for offset_y in checks.iter() {
             for offset_x in checks.iter() {
-                if let Some(paper) = self.offset(*offset_x, *offset_y, grid) {
-                    //eprintln!("Found {:?} adjacent to {:?}", paper, self);
+                if self.offset(*offset_x, *offset_y, grid).is_some() {
                     ret += 1;
                 }
             }
         }
-        //eprintln!("Paper {:?} has {} nearby nodes", self, ret);
         ret
     }
     fn offset(
@@ -66,9 +64,10 @@ impl Paper {
         grid[y][x]
     }
 }
+type Grid = Vec<Vec<Option<Paper>>>;
 
 fn solve(lines: Vec<String>) -> usize {
-    let mut grid: Vec<Vec<Option<Paper>>> = Vec::new();
+    let mut grid: Grid = Vec::new();
 
     for (y, row) in lines.iter().enumerate() {
         let mut v_row = Vec::new();
