@@ -8,19 +8,19 @@ Point = namedtuple("Point", ["x", "y"])
 with open(Path(__file__).parent.joinpath("input")) as f:
     data = [line.strip() for line in f.readlines()]
 
-max = len(data)
-
 
 def process(beam: Point) -> int:
-    if beam.y == max:
+    if beam.y == len(data):
         return 1
     if (result := cache.get(beam)) != None:
         return result
     match data[beam.y][beam.x]:
         case ".":
-            result = process(Point(beam.x, beam.y + 1))
+            next = Point(beam.x, beam.y + 1)
+            result = process(next)
         case "^":
-            result = process(Point(beam.x - 1, beam.y)) + process(Point(beam.x + 1, beam.y))
+            left, right = Point(beam.x - 1, beam.y), Point(beam.x + 1, beam.y)
+            result = process(left) + process(right)
         case _:
             raise RuntimeError("Can't get here")
     cache[beam] = result
