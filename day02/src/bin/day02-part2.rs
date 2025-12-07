@@ -14,32 +14,43 @@ struct Opt {
     threads: usize,
 }
 
-fn valid_id(id: &usize) -> bool {
-    let string_id = id.to_string();
-    let len = string_id.len();
-    for i in 1..len {
-        let slice = &string_id[0..i];
-        let slice_len = slice.len();
-        let limit = len / slice_len + 1;
-        for j in 2..limit {
-            if string_id == slice.repeat(j) {
-                //eprintln!("Found invalid id: {}", id);
-                return false;
-            }
+fn repeat_digits(digits: usize, repeat_count: usize) -> usize {
+    if digits == 0 {
+        return 0;
+    }
+    let len = digits.ilog10() + 1;
+    let mut ret = 0;
+    for i in 0..repeat_count {
+        let pow = 10usize.pow((i as u32) * len);
+        ret += digits * pow;
+    }
+    ret
+}
+
+fn valid_id(id: usize) -> bool {
+    let len: usize = (id.ilog10() + 1) as usize;
+    for i in 1..=(len / 2) {
+        let slice = id % 10usize.pow(i as u32);
+        if len % i != 0 {
+            continue;
+        }
+        let repeat = repeat_digits(slice, len / i);
+        if id == repeat {
+            return false;
         }
     }
     true
 }
 
-fn solve(lines: Vec<String>) -> usize {
+fn solve(ranges: Vec<&str>) -> usize {
     let mut ret = 0;
-    for range in lines {
+    for range in ranges {
         let (start, end) = range.split_once('-').unwrap();
         let u_start = start.parse::<usize>().unwrap();
         let u_end = end.parse::<usize>().unwrap();
-        ret += (u_start..(u_end + 1))
+        ret += (u_start..=u_end)
             .into_par_iter()
-            .filter(|id| !valid_id(id))
+            .filter(|id| !valid_id(*id))
             .sum::<usize>();
     }
     ret
@@ -53,31 +64,20 @@ fn main() -> io::Result<()> {
         .build_global()
         .unwrap();
 
-    let reader = BufReader::new(opt.input);
-    let lines: Vec<String> = reader
-        .lines()
-        .flatten()
-        .filter(|s| !s.is_empty())
-        .map(|s| {
-            s.split(',')
-                .map(|st| st.to_string())
-                .collect::<Vec<String>>()
-        })
-        .flatten()
-        .collect();
-    println!("{}", solve(lines));
+    let mut reader = BufReader::new(opt.input);
+    let mut line = String::new();
+    reader.read_line(&mut line)?;
+    let ranges: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
+    println!("{}", solve(ranges));
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn convert_example(example: &[&str]) -> Vec<String> {
-        example.iter().map(|line| line.to_string()).collect()
-    }
     #[test]
     fn given() {
-        let example = [
+        let example = Vec::from([
             "11-22",
             "95-115",
             "998-1012",
@@ -89,8 +89,8 @@ mod tests {
             "565653-565659",
             "824824821-824824827",
             "2121212118-2121212124",
-        ];
+        ]);
         println!("{}", example.join(","));
-        assert_eq!(solve(convert_example(&example)), 4174379265);
+        assert_eq!(solve(example), 4174379265);
     }
 }
