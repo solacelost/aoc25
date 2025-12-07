@@ -1,8 +1,6 @@
 use clap::Parser;
 use clio::Input;
-use std::fmt;
 use std::io::{self, BufReader, prelude::*};
-use std::ops::{Index, IndexMut};
 
 #[derive(Parser)]
 struct Opt {
@@ -18,18 +16,21 @@ struct Paper {
 }
 impl Paper {
     fn nearby(&self, grid: &Grid) -> Vec<Paper> {
-        let mut ret = Vec::new();
-        let checks: [isize; 3] = [-1, 0, 1];
-        for offset_y in checks.iter() {
-            for offset_x in checks.iter() {
-                if let Some(paper) = self.offset(*offset_x, *offset_y, grid) {
-                    //eprintln!("Found {:?} adjacent to {:?}", paper, self);
-                    ret.push(paper);
-                }
-            }
-        }
-        //eprintln!("Paper {:?} has {} nearby nodes", self, ret);
-        ret
+        let checks: [(isize, isize); 8] = [
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ];
+        checks
+            .iter()
+            .map(|c| self.offset(c.0, c.1, grid))
+            .flatten()
+            .collect()
     }
     fn offset(&self, offset_x: isize, offset_y: isize, grid: &Grid) -> Option<Paper> {
         let max_y = grid.len() as isize;
@@ -58,92 +59,24 @@ impl Paper {
         grid[y][x]
     }
 }
-#[derive(Clone, Debug)]
-struct Row {
-    columns: Vec<Option<Paper>>,
-}
-impl Row {
-    fn new() -> Self {
-        Self {
-            columns: Vec::new(),
-        }
-    }
-    fn push(&mut self, other: Option<Paper>) {
-        self.columns.push(other);
-    }
-    fn len(&self) -> usize {
-        self.columns.len()
-    }
-}
-impl Index<usize> for Row {
-    type Output = Option<Paper>;
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.columns[index]
-    }
-}
-impl IndexMut<usize> for Row {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.columns[index]
-    }
-}
-impl fmt::Display for Row {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for paper in self.columns.iter() {
-            if paper.is_some() {
-                let _ = write!(f, "@");
-            } else {
-                let _ = write!(f, ".");
-            }
-        }
-        Ok(())
-    }
-}
-#[derive(Clone, Debug)]
-struct Grid {
-    rows: Vec<Row>,
-}
-impl Grid {
-    fn new() -> Self {
-        Self { rows: Vec::new() }
-    }
-    fn push(&mut self, other: Row) {
-        self.rows.push(other);
-    }
-    fn removable(&self) -> Vec<&Paper> {
-        let mut ret = Vec::new();
-        for row in self.rows.iter() {
-            for option in row.columns.iter() {
-                if let Some(paper) = option {
-                    if paper.nearby(&self).len() < 4 {
-                        ret.push(paper);
+type Row = Vec<Option<Paper>>;
+type Grid = Vec<Row>;
+
+fn removable(grid: &Grid) -> Vec<&Paper> {
+    grid.iter()
+        .map(|row| {
+            row.iter()
+                .filter(|option| {
+                    if let Some(paper) = option {
+                        paper.nearby(grid).len() < 4
+                    } else {
+                        false
                     }
-                }
-            }
-        }
-        ret
-    }
-    fn len(&self) -> usize {
-        self.rows.len()
-    }
-}
-impl Index<usize> for Grid {
-    type Output = Row;
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.rows[index]
-    }
-}
-impl IndexMut<usize> for Grid {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.rows[index]
-    }
-}
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for row in self.rows.iter() {
-            let _ = writeln!(f, "{}", row);
-        }
-        Ok(())
-    }
+                })
+                .flatten()
+        })
+        .flatten()
+        .collect()
 }
 
 fn solve(lines: Vec<String>) -> usize {
@@ -163,16 +96,12 @@ fn solve(lines: Vec<String>) -> usize {
     let mut done = false;
     let mut ret = 0;
     while !done {
-        let start = grid.clone();
-        //eprintln!("Checking for removable paper in:");
-        //eprintln!("{}", start);
-        let removable = start.removable();
-        //eprintln!("Found {}: {:?}", removable.len(), removable);
-
-        if removable.len() == 0 {
+        let start = &grid.clone();
+        let to_remove = removable(start);
+        if to_remove.len() == 0 {
             done = true;
         }
-        for paper in removable.into_iter() {
+        for paper in to_remove.iter() {
             grid[paper.y][paper.x] = None;
             ret += 1;
         }
