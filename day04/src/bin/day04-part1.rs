@@ -1,6 +1,5 @@
 use clap::Parser;
 use clio::Input;
-use rayon::prelude::*;
 use std::io::{self, BufReader, prelude::*};
 
 #[derive(Parser)]
@@ -8,10 +7,6 @@ struct Opt {
     /// Input file, use '-' for stdin
     #[clap(value_parser, default_value = "-")]
     input: Input,
-
-    /// the number of CPU cores to use (all if unspecified)
-    #[clap(short, long, default_value_t = num_cpus::get())]
-    threads: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -80,14 +75,16 @@ fn solve(lines: Vec<String>) -> usize {
         }
         grid.push(v_row);
     }
-    grid.par_iter()
+    grid.iter()
         .map(|row| {
-            row.par_iter()
-                .map(|p| match p {
-                    Some(paper) => paper.nearby(&grid) < 4,
-                    None => false,
+            row.iter()
+                .filter(|option| {
+                    if let Some(paper) = option {
+                        paper.nearby(&grid) < 4
+                    } else {
+                        false
+                    }
                 })
-                .filter(|p| *p)
                 .count()
         })
         .sum()
@@ -95,11 +92,6 @@ fn solve(lines: Vec<String>) -> usize {
 
 fn main() -> io::Result<()> {
     let opt = Opt::parse();
-
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(opt.threads)
-        .build_global()
-        .unwrap();
 
     let reader = BufReader::new(opt.input);
     let lines: Vec<String> = reader.lines().flatten().filter(|s| !s.is_empty()).collect();
