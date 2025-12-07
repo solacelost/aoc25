@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
 
+from collections import namedtuple
 from pathlib import Path
 
-input = Path(__file__).parent.joinpath("input")
+Point = namedtuple("Point", ["x", "y"])
 
-with open(input) as f:
+with open(Path(__file__).parent.joinpath("input")) as f:
     data = [line.strip() for line in f.readlines()]
 
 max = len(data)
 
 
-def process(x: int, y: int) -> int:
-    global cache
-    global data
-    global max
-    if y == max:
+def process(beam: Point) -> int:
+    if beam.y == max:
         return 1
-    if (result := cache.get((x,y,))) != None:
+    if (result := cache.get(beam)) != None:
         return result
-
-    result = 0
-    match data[y][x]:
+    match data[beam.y][beam.x]:
         case ".":
-            result = process(x, y + 1)
+            result = process(Point(beam.x, beam.y + 1))
         case "^":
-            result = process(x - 1, y) + process(x + 1, y)
-    cache[(x,y,)] = result
+            result = process(Point(beam.x - 1, beam.y)) + process(Point(beam.x + 1, beam.y))
+        case _:
+            raise RuntimeError("Can't get here")
+    cache[beam] = result
     return result
 
 
 cache = dict()
-result = process(data[0].find("S"), 1)
+start = Point(data[0].find("S"), 1)
+result = process(start)
 print(result)
