@@ -1,6 +1,6 @@
 use clap::Parser;
 use clio::Input;
-use std::fmt;
+use moka::sync::Cache;
 use std::io::{self, BufReader, prelude::*};
 
 #[derive(Parser)]
@@ -15,20 +15,6 @@ enum Position {
     Empty,
     Start,
     Splitter,
-    SplitterHit,
-    Beam,
-}
-impl fmt::Display for Position {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let _ = match self {
-            Position::Empty => write!(f, "."),
-            Position::Start => write!(f, "S"),
-            Position::Splitter => write!(f, "^"),
-            Position::SplitterHit => write!(f, "^"),
-            Position::Beam => write!(f, "|"),
-        };
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -45,69 +31,46 @@ impl Row {
         self.columns.push(position);
     }
 }
-impl fmt::Display for Row {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for position in self.columns.iter() {
-            let _ = write!(f, "{}", position);
-        }
-        Ok(())
-    }
-}
 
 #[derive(Debug)]
 struct Manifold {
     rows: Vec<Row>,
-    start: Option<(usize, usize)>,
 }
 impl Manifold {
     fn new() -> Self {
-        Self {
-            rows: Vec::new(),
-            start: None,
-        }
+        Self { rows: Vec::new() }
     }
     fn add(&mut self, row: Row) {
         self.rows.push(row);
     }
-    fn process(&mut self, row_y: usize, beam_xs: Vec<usize>) -> Vec<usize> {
-        let mut ret = Vec::new();
-        let row = &mut self.rows[row_y];
-        for beam_x in beam_xs {
-            match row.columns[beam_x] {
-                Position::Empty => {
-                    row.columns[beam_x] = Position::Beam;
-                    ret.push(beam_x);
-                }
-                Position::Splitter => {
-                    row.columns[beam_x] = Position::SplitterHit;
-                    ret.push(beam_x - 1);
-                    ret.push(beam_x + 1);
-                }
-                _ => panic!("This should never happen"),
+    fn process(&self, beam: (usize, usize), cache: &mut Cache<(usize, usize), usize>) -> usize {
+        if beam.1 == self.rows.len() - 1 {
+            return 0;
+        }
+        if let Some(_) = cache.get(&beam) {
+            // We have visited this path, don't double-count it
+            return 0;
+        }
+        let row = &self.rows[beam.1];
+        let ret = match row.columns[beam.0] {
+            Position::Empty => self.process((beam.0, beam.1 + 1), cache),
+            Position::Splitter => {
+                1 + self.process((beam.0 - 1, beam.1 + 1), cache)
+                    + self.process((beam.0 + 1, beam.1 + 1), cache)
             }
-        }
-        ret.dedup();
+            _ => panic!(
+                "Somehow hit position '{:?}' at ({}, {})",
+                row.columns[beam.0], beam.0, beam.1
+            ),
+        };
+        cache.insert((beam.0, beam.1), ret);
         ret
-    }
-    fn beam(&mut self) {
-        let max_row = self.rows.len();
-        let (startx, starty) = self.start.unwrap();
-        let mut beams = Vec::from([startx]);
-        for row in (starty + 1)..max_row {
-            beams = self.process(row, beams);
-        }
-    }
-}
-impl fmt::Display for Manifold {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for row in self.rows.iter() {
-            let _ = writeln!(f, "{}", row);
-        }
-        Ok(())
     }
 }
 
 fn solve(lines: Vec<String>) -> usize {
+    let cache = Cache::new(1_000_000);
+
     let mut manifold = Manifold::new();
     let mut start: Option<(usize, usize)> = None;
     for (y, line) in lines.iter().enumerate() {
@@ -117,29 +80,15 @@ fn solve(lines: Vec<String>) -> usize {
                 '.' => row.add(Position::Empty),
                 'S' => {
                     row.add(Position::Start);
-                    start = Some((x, y));
+                    start = Some((x, y + 1));
                 }
                 '^' => row.add(Position::Splitter),
                 _ => panic!("This should never happen"),
             }
         }
-        if let Some(pair) = start {
-            manifold.start = Some(pair);
-            start = None;
-        }
         manifold.add(row);
     }
-    manifold.beam();
-    eprintln!("Processed:");
-    eprintln!("{}", manifold);
-
-    manifold
-        .rows
-        .into_iter()
-        .map(|r| r.columns)
-        .flatten()
-        .filter(|p| matches!(p, Position::SplitterHit))
-        .count()
+    manifold.process(start.unwrap(), &mut cache.clone())
 }
 
 fn main() -> io::Result<()> {
