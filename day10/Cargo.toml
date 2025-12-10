@@ -1,0 +1,19 @@
+[package]
+name = "day10"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+clap = { workspace = true }
+clio = { workspace = true }
+rayon = { workspace = true }
+num_cpus = { workspace = true }
+regex = { workspace = true }
+itertools = { workspace = true }
+
+[[bin]]
+name = "day10-part1"
+
+[[bin]]
+name = "day10-part2"
