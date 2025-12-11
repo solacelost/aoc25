@@ -1,8 +1,9 @@
 use clap::Parser;
 use clio::Input;
 use itertools::Itertools;
+use petgraph::algo::connected_components;
+use petgraph::graph::{NodeIndex, UnGraph};
 use rayon::prelude::*;
-use std::collections::HashSet;
 use std::io::{self, BufReader, prelude::*};
 
 #[derive(Parser)]
@@ -17,121 +18,50 @@ struct Opt {
 }
 
 type JunctionBox = (usize, usize, usize);
-type Pair = (JunctionBox, JunctionBox);
 type Playground = Vec<JunctionBox>;
-type Circuit = HashSet<JunctionBox>;
 
-fn euclidean_distance(pair: Pair) -> usize {
-    let dx = pair.0.0.abs_diff(pair.1.0);
-    let dy = pair.0.1.abs_diff(pair.1.1);
-    let dz = pair.0.2.abs_diff(pair.1.2);
+fn euclidean_distance(a: &JunctionBox, b: &JunctionBox) -> usize {
+    let dx = a.0.abs_diff(b.0);
+    let dy = a.1.abs_diff(b.1);
+    let dz = a.2.abs_diff(b.2);
     (dx.pow(2) + dy.pow(2) + dz.pow(2)).isqrt()
-}
-
-fn pair_in_circuit(pair: Pair, circuit: &Circuit) -> bool {
-    let (l, r) = pair;
-    if circuit.get(&l).is_some() {
-        return true;
-    }
-    if circuit.get(&r).is_some() {
-        return true;
-    }
-    false
 }
 
 fn solve(lines: Vec<String>) -> usize {
     // Parse the junction boxes
-    let mut playground: Playground = Vec::new();
-    for line in lines.iter() {
-        let junction: JunctionBox = line
-            .splitn(3, ",")
-            .map(|s| s.parse::<usize>().unwrap())
-            .collect_tuple()
-            .unwrap();
-        playground.push(junction);
-    }
-    // record the distance between all pairs, store them
-    let mut distances: Vec<(Pair, usize)> = playground
-        .into_iter()
-        .tuple_combinations()
-        .par_bridge()
-        .map(|pair| {
-            let distance = euclidean_distance(pair);
-            (pair, distance)
+    let playground: Playground = lines
+        .iter()
+        .map(|line| {
+            line.splitn(3, ",")
+                .map(|s| s.parse::<usize>().unwrap())
+                .collect_tuple()
+                .unwrap()
         })
         .collect();
-    // sort with the closest at the end
-    distances.sort_by(|a, b| b.1.cmp(&a.1));
 
-    // map $count worth of close pairs from the whole playground
-    let mut circuits: Vec<Circuit> = Vec::new();
+    // prepare the graph of indexes
+    let mut circuit = UnGraph::<usize, ()>::new_undirected();
+    let nodes: Vec<NodeIndex> = (0..playground.len()).map(|i| circuit.add_node(i)).collect();
+
+    // record the distance between all pairs, store the indexes in the playground
+    let mut sorted_distances: Vec<((usize, usize), usize)> = playground
+        .iter()
+        .enumerate()
+        .tuple_combinations()
+        .par_bridge()
+        .map(|((i, a), (j, b))| {
+            let distance = euclidean_distance(a, b);
+            ((i, j), distance)
+        })
+        .collect();
+    sorted_distances.par_sort_by(|a, b| b.1.cmp(&a.1));
+
+    // graph all the nodes in the playground
     loop {
-        // this is the closest pair
-        let (pair, _) = distances.pop().unwrap();
-
-        // check if we already have a circuit with one of these junction boxes in it
-        let mut to_add: Option<usize> = None;
-        for (i, circuit) in circuits.iter().enumerate() {
-            if pair_in_circuit(pair, circuit) {
-                to_add = Some(i);
-                break;
-            }
-        }
-        // if we do, add this pair to the circuit, otherwise create a new circuit with the pair
-        if let Some(i) = to_add {
-            circuits[i].insert(pair.0);
-            circuits[i].insert(pair.1);
-        } else {
-            circuits.push(HashSet::from([pair.0, pair.1]));
-        }
-
-        // Merge any duplicates down
-        let mut mergable: Option<(usize, usize)> = None;
-        'outer: for i in 0..circuits.len() {
-            for j in 0..circuits.len() {
-                if i == j {
-                    continue;
-                }
-                let intersection: Vec<&JunctionBox> =
-                    circuits[i].intersection(&circuits[j]).collect();
-                if intersection.len() != 0 {
-                    mergable = Some((i, j));
-                    break 'outer;
-                }
-            }
-        }
-        if mergable.is_some() {
-            let (l, r) = mergable.unwrap();
-            let mut left: Circuit;
-            let right: Circuit;
-            if l < r {
-                right = circuits.remove(r);
-                left = circuits.remove(l);
-            } else {
-                left = circuits.remove(l);
-                right = circuits.remove(r);
-            }
-            left.extend(right);
-            circuits.push(left);
-        }
-
-        // find all remaining boxes, and if we're done return the product of the x coordinates
-        let remaining_boxes: Vec<JunctionBox> = distances.iter().map(|d| d.0).fold(
-            Vec::with_capacity(distances.len() * 2),
-            |mut array, j| {
-                array.push(j.0);
-                array.push(j.1);
-                array
-            },
-        );
-        let mut all_boxes: HashSet<&JunctionBox> = HashSet::from_iter(remaining_boxes.iter());
-        for circuit in circuits.iter() {
-            for junction in circuit.iter() {
-                _ = all_boxes.remove(junction);
-            }
-        }
-        if all_boxes.len() == 0 {
-            return pair.0.0 * pair.1.0;
+        let ((l, r), _) = sorted_distances.pop().unwrap();
+        circuit.update_edge(nodes[l], nodes[r], ());
+        if connected_components(&circuit) == 1 {
+            return playground[l].0 * playground[r].0;
         }
     }
 }

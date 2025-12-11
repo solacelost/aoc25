@@ -10,6 +10,7 @@ clio = { workspace = true }
 rayon = { workspace = true }
 num_cpus = { workspace = true }
 itertools = { workspace = true }
+petgraph = { workspace = true }
 
 [[bin]]
 name = "day08-part1"
