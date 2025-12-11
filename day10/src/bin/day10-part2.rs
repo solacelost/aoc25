@@ -1,6 +1,5 @@
 use clap::Parser;
 use clio::Input;
-use itertools::Itertools;
 use microlp::{ComparisonOp, LinearExpr, OptimizationDirection, Problem, Variable};
 use regex::Regex;
 use std::io::{self, BufReader, prelude::*};
@@ -14,70 +13,51 @@ struct Opt {
 
 fn solve(lines: Vec<String>) -> usize {
     let re =
-        Regex::new(r"\[(?<indicators>[.#]*)\] (?<buttons>(\([0-9,]*\) )*)\{(?<joltage>[0-9,]*)\}")
-            .unwrap();
+        Regex::new(r"^\[([.#]*)\] (?<buttons>(\([0-9,]*\) )*)\{(?<joltage>[0-9,]*)\}").unwrap();
     lines
         .iter()
         .map(|line| {
             if let Some(capture) = re.captures(line) {
-                //let indicators: Vec<bool> = capture["indicators"].chars().map(|c| c == '#').collect();
                 let buttons: Vec<Vec<usize>> = capture["buttons"]
                     .split_terminator(" ")
                     .map(|b| {
                         b.trim_matches(['(', ')'])
                             .split(',')
                             .map(|n| n.parse::<usize>().unwrap())
-                            .sorted()
                             .collect()
                     })
                     .collect();
-                //eprintln!("Parsed buttons: {:?}", buttons);
 
-                let joltage: Vec<usize> = capture["joltage"]
+                let joltages: Vec<usize> = capture["joltage"]
                     .split(',')
                     .map(|n| n.parse::<usize>().unwrap())
                     .collect();
-                //eprintln!("Parsed joltage: {:?}", joltage);
+                let max = joltages.iter().copied().max().unwrap() as i32;
 
                 let mut problem = Problem::new(OptimizationDirection::Minimize);
-                let max = joltage.iter().copied().max().unwrap();
-                //eprintln!("Max joltage: {}", max);
+                let mut vars: Vec<Variable> = Vec::new();
+                for _ in 0..(buttons.len()) {
+                    vars.push(problem.add_integer_var(1.0, (0, max)));
+                }
 
-                let vars: Vec<Variable> = (0..(buttons.len()))
-                    .map(|_| problem.add_integer_var(1.0, (0, max as i32)))
-                    .collect();
-                //eprintln!("Created {} variables: {:?}", buttons.len(), vars);
-
-                for (i, &n) in joltage.iter().enumerate() {
-                    let expr = buttons
+                for (i, &joltage) in joltages.iter().enumerate() {
+                    let mut button_constraint = LinearExpr::empty();
+                    buttons
                         .iter()
                         .zip(&vars)
-                        //.map(|t| {
-                        //    eprintln!("Zipped button/var: {:?}", t);
-                        //    t
-                        //})
                         .filter(|(b, _)| b.contains(&i))
-                        //.map(|t| {
-                        //    eprintln!("Filtered to {:?}", t);
-                        //    t
-                        //})
-                        .fold(LinearExpr::empty(), |mut ex, (_, &var)| {
-                            ex.add(var, 1.0);
-                            ex
+                        .for_each(|(_, &var)| {
+                            button_constraint.add(var, 1.0);
                         });
-                    //eprintln!("Created linear expression for position {}: {:?}", i, expr);
-                    problem.add_constraint(expr, ComparisonOp::Eq, n as f64);
+                    problem.add_constraint(button_constraint, ComparisonOp::Eq, joltage as f64);
                 }
                 if let Ok(answer) = problem.solve() {
-                    //eprintln!("Found answer: {:?}", answer);
                     answer.objective().round() as usize
                 } else {
-                    //eprintln!("No answer!");
-                    0
+                    panic!("Couldn't solve: {}", line);
                 }
             } else {
-                //eprintln!("Failed parsing!");
-                0
+                panic!("Couldn't parse: {}", line);
             }
         })
         .sum()
