@@ -14,6 +14,7 @@ function build {
 }
 
 run_test=false
+cumulative=false
 desired_days=()
 desired_parts=()
 cargo_args=()
@@ -41,6 +42,9 @@ while [[ $# -gt 0 ]]; do
     -v|--verbose)
         verbose=true
         ;;
+    -c|--cumulative)
+        cumulative=true
+        ;;
     *)
         cargo_args+=("$1")
         ;;
@@ -48,6 +52,7 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
+elapsed=0
 while read -r dir; do
 	day=$(basename "$dir")
 	if [ "${desired_days[*]}" ] && ! [[ " ${desired_days[*]} " =~ " $day " ]]; then
@@ -85,7 +90,12 @@ while read -r dir; do
 			[ "${ans:-0}" = "$correct" ] && correct=correct || correct="incorrect: $correct"
 			echo -en "\t$ans (${correct}) time: "
             echo "$(echo $(( end - start)) 1000000 | awk '{printf "%.2f", $1/$2}')ms"
+            (( elapsed += end - start ))
 			echo
 		fi
 	done
 done < <(find . -mindepth 1 -maxdepth 1 -type d -name day\* ! -path './dayX' | sort)
+
+if $cumulative; then
+    echo "cumulative: $(echo $elapsed 1000000000 | awk '{printf "%.2f", $1/$2}')s"
+fi
