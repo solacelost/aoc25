@@ -34,3 +34,5 @@ strum_macros = "0.27"
 moka = { version = "0.12", features = ["sync"] }
 microlp = "0.2"
 petgraph = { version = "0.8", features = ["rayon"] }
+indexmap = "2"
+hashbrown = "0.16"
